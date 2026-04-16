@@ -1,0 +1,39 @@
+{
+  "name": "adaptive-ai-interview-platform",
+  "version": "1.0.0",
+  "description": "Adaptive AI Interview Platform - A full-stack application with AI-driven interviews",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "npm run dev --workspace=apps/client",
+    "dev:server": "npm run dev --workspace=apps/server",
+    "build": "npm run build --workspace=apps/client",
+    "build:server": "npm run build --workspace=apps/server",
+    "start": "npm run start --workspace=apps/server",
+    "install:all": "npm install && npm install --workspace=apps/client && npm install --workspace=apps/server",
+    "clean": "rm -rf node_modules apps/client/node_modules apps/server/node_modules packages/shared/node_modules",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "ai",
+    "interview",
+    "adaptive",
+    "monorepo",
+    "react",
+    "nodejs",
+    "openai"
+  ],
+  "author": "",
+  "license": "MIT"
+}

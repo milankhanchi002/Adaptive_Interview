@@ -1,0 +1,259 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import interviewService from '../services/interviewService'
+import LoadingSpinner from '../components/LoadingSpinner'
+import { 
+  Brain, 
+  Plus, 
+  TrendingUp, 
+  Clock, 
+  Target, 
+  Calendar,
+  BarChart3,
+  Play,
+  Eye
+} from 'lucide-react'
+import toast from 'react-hot-toast'
+
+const Dashboard = () => {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [stats, setStats] = useState(null)
+  const [interviews, setInterviews] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      const [statsResponse, interviewsResponse] = await Promise.all([
+        interviewService.getInterviewStats(),
+        interviewService.getUserInterviews(1, 5)
+      ])
+      
+      setStats(statsResponse.data)
+      setInterviews(interviewsResponse.data.interviews)
+    } catch (error) {
+      toast.error('Failed to load dashboard data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const startNewInterview = async () => {
+    try {
+      const response = await interviewService.startInterview(user.profile?.domain || 'Computer Science')
+      navigate(`/interview/${response.data.interviewId}`)
+    } catch (error) {
+      toast.error('Failed to start interview')
+    }
+  }
+
+  const getScoreColor = (score) => {
+    if (score >= 70) return 'text-success-600'
+    if (score >= 40) return 'text-warning-600'
+    return 'text-error-600'
+  }
+
+  const getLevelBadgeColor = (level) => {
+    const colors = {
+      'Advanced': 'bg-success-100 text-success-800',
+      'Intermediate': 'bg-warning-100 text-warning-800',
+      'Beginner': 'bg-error-100 text-error-800'
+    }
+    return colors[level] || 'bg-gray-100 text-gray-800'
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome back, {user.username}!
+          </h1>
+          <p className="text-gray-600">
+            Track your progress and improve your interview skills
+          </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <button
+            onClick={startNewInterview}
+            className="btn btn-primary btn-lg flex items-center space-x-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Start New Interview</span>
+          </button>
+        </div>
+
+        {/* Stats Grid */}
+        {stats && (
+          <div className="grid md:grid-cols-4 gap-6 mb-8">
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <Brain className="h-8 w-8 text-primary-600" />
+                <span className="text-2xl font-bold text-gray-900">{stats.totalInterviews}</span>
+              </div>
+              <p className="text-gray-600">Total Interviews</p>
+            </div>
+
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <TrendingUp className="h-8 w-8 text-success-600" />
+                <span className={`text-2xl font-bold ${getScoreColor(stats.averageScore)}`}>
+                  {stats.averageScore}
+                </span>
+              </div>
+              <p className="text-gray-600">Average Score</p>
+            </div>
+
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <Target className="h-8 w-8 text-warning-600" />
+                <span className="text-2xl font-bold text-gray-900">{stats.highestScore}</span>
+              </div>
+              <p className="text-gray-600">Highest Score</p>
+            </div>
+
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <Clock className="h-8 w-8 text-primary-600" />
+                <span className="text-2xl font-bold text-gray-900">
+                  {Math.round(stats.averageDuration / 60)}m
+                </span>
+              </div>
+              <p className="text-gray-600">Avg. Duration</p>
+            </div>
+          </div>
+        )}
+
+        {/* Domain Stats */}
+        {stats?.domainStats && stats.domainStats.length > 0 && (
+          <div className="card mb-8">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Performance by Domain</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {stats.domainStats.map((domain, index) => (
+                <div key={index} className="text-center">
+                  <h4 className="font-medium text-gray-900 mb-2">{domain.domain}</h4>
+                  <div className="text-2xl font-bold text-primary-600 mb-1">
+                    {domain.averageScore}
+                  </div>
+                  <p className="text-sm text-gray-600">{domain.count} interviews</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Interviews */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-semibold text-gray-900">Recent Interviews</h3>
+            <button
+              onClick={() => navigate('/interviews')}
+              className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+            >
+              View All
+            </button>
+          </div>
+
+          {interviews.length === 0 ? (
+            <div className="text-center py-12">
+              <Brain className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No interviews yet</h3>
+              <p className="text-gray-600 mb-4">Start your first interview to see your results here</p>
+              <button
+                onClick={startNewInterview}
+                className="btn btn-primary flex items-center space-x-2 mx-auto"
+              >
+                <Play className="h-4 w-4" />
+                <span>Start Interview</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {interviews.map((interview) => (
+                <div key={interview._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h4 className="font-medium text-gray-900">{interview.domain}</h4>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getLevelBadgeColor(interview.level)}`}>
+                          {interview.level}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          interview.status === 'Completed' ? 'bg-success-100 text-success-800' :
+                          interview.status === 'In Progress' ? 'bg-warning-100 text-warning-800' :
+                          'bg-error-100 text-error-800'
+                        }`}>
+                          {interview.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>{new Date(interview.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        {interview.questionCount && (
+                          <div className="flex items-center space-x-1">
+                            <Target className="h-4 w-4" />
+                            <span>{interview.questionCount} questions</span>
+                          </div>
+                        )}
+                        {interview.totalDuration && (
+                          <div className="flex items-center space-x-1">
+                            <Clock className="h-4 w-4" />
+                            <span>{Math.round(interview.totalDuration / 60)}m</span>
+                          </div>
+                        )}
+                        {interview.overallScore && (
+                          <div className={`font-medium ${getScoreColor(interview.overallScore)}`}>
+                            Score: {interview.overallScore}/100
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {interview.status === 'Completed' ? (
+                        <button
+                          onClick={() => navigate(`/result/${interview._id}`)}
+                          className="btn btn-secondary flex items-center space-x-1"
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span>View</span>
+                        </button>
+                      ) : interview.status === 'In Progress' ? (
+                        <button
+                          onClick={() => navigate(`/interview/${interview._id}`)}
+                          className="btn btn-primary flex items-center space-x-1"
+                        >
+                          <Play className="h-4 w-4" />
+                          <span>Continue</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default Dashboard
