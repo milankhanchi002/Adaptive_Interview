@@ -7,6 +7,10 @@ const registerSchema = Joi.object({
   username: Joi.string().min(3).max(30).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
+  confirmPassword: Joi.string().valid(Joi.ref('password')).required().messages({
+    'any.only': 'Passwords do not match',
+    'any.required': 'Confirm password is required'
+  }),
   profile: Joi.object({
     firstName: Joi.string(),
     lastName: Joi.string(),
@@ -67,10 +71,8 @@ class AuthController {
       res.status(201).json({
         success: true,
         message: 'User registered successfully',
-        data: {
-          user,
-          token
-        }
+        user,
+        token
       });
     } catch (error) {
       next(error);
@@ -104,10 +106,8 @@ class AuthController {
       res.json({
         success: true,
         message: 'Login successful',
-        data: {
-          user,
-          token
-        }
+        user,
+        token
       });
     } catch (error) {
       next(error);
@@ -118,9 +118,7 @@ class AuthController {
     try {
       res.json({
         success: true,
-        data: {
-          user: req.user
-        }
+        user: req.user
       });
     } catch (error) {
       next(error);
@@ -147,9 +145,7 @@ class AuthController {
       res.json({
         success: true,
         message: 'Profile updated successfully',
-        data: {
-          user
-        }
+        user
       });
     } catch (error) {
       next(error);

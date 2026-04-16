@@ -20,7 +20,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
-  const { register, error, clearError } = useAuth()
+  const { register, error, clearError, isAuthenticated } = useAuth()
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -56,17 +56,24 @@ const Register = () => {
 
     try {
       const { confirmPassword, ...userData } = formData
-      const result = await register(userData)
+      const result = await register(formData)
       if (result.success) {
-        toast.success('Registration successful!')
+        toast.success('Registration successful! Redirecting to dashboard...')
+        // Redirect will be handled by AuthContext initialization
       } else {
         toast.error(result.error)
+        clearError()
       }
     } catch (error) {
       toast.error('Registration failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isAuthenticated) {
+    // Redirect to dashboard if already authenticated
+    // This will be handled by AuthContext initialization
   }
 
   return (
@@ -110,6 +117,7 @@ const Register = () => {
                   onChange={handleChange}
                   className="input"
                   placeholder="John"
+                  disabled={isLoading}
                 />
               </div>
               <div>
@@ -124,6 +132,7 @@ const Register = () => {
                   onChange={handleChange}
                   className="input"
                   placeholder="Doe"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -145,6 +154,7 @@ const Register = () => {
                   onChange={handleChange}
                   className="input pl-10"
                   placeholder="johndoe"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -167,6 +177,7 @@ const Register = () => {
                   onChange={handleChange}
                   className="input pl-10"
                   placeholder="john@example.com"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -181,6 +192,7 @@ const Register = () => {
                 value={formData.profile.domain}
                 onChange={handleChange}
                 className="input"
+                disabled={isLoading}
               >
                 <option value="Computer Science">Computer Science</option>
                 <option value="Marketing">Marketing</option>
@@ -199,6 +211,7 @@ const Register = () => {
                 value={formData.profile.experience}
                 onChange={handleChange}
                 className="input"
+                disabled={isLoading}
               >
                 <option value="Beginner">Beginner</option>
                 <option value="Intermediate">Intermediate</option>
@@ -218,11 +231,12 @@ const Register = () => {
                   id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  required
                   value={formData.password}
                   onChange={handleChange}
-                  className="input pl-10 pr-10"
-                  placeholder="••••••••"
+                  className="input"
+                  placeholder="•••••••"
+                  required
+                  disabled={isLoading}
                 />
                 <button
                   type="button"

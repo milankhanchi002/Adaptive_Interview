@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { useEffect } from 'react'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import Login from './pages/Login'
@@ -10,7 +11,17 @@ import Dashboard from './pages/Dashboard'
 import LoadingSpinner from './components/LoadingSpinner'
 
 function App() {
-  const { user, loading } = useAuth()
+  const { user, loading, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Handle authentication redirects
+    if (!loading && isAuthenticated) {
+      navigate('/dashboard')
+    } else if (!loading && !isAuthenticated && window.location.pathname !== '/' && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      navigate('/login')
+    }
+  }, [isAuthenticated, loading, navigate])
 
   if (loading) {
     return (
@@ -26,23 +37,23 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route 
           path="/login" 
-          element={!user ? <Login /> : <Navigate to="/dashboard" />} 
+          element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} 
         />
         <Route 
           path="/register" 
-          element={!user ? <Register /> : <Navigate to="/dashboard" />} 
+          element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} 
         />
         <Route 
           path="/interview/:interviewId" 
-          element={user ? <Interview /> : <Navigate to="/login" />} 
+          element={isAuthenticated ? <Interview /> : <Navigate to="/login" />} 
         />
         <Route 
           path="/result/:interviewId" 
-          element={user ? <Result /> : <Navigate to="/login" />} 
+          element={isAuthenticated ? <Result /> : <Navigate to="/login" />} 
         />
         <Route 
           path="/dashboard" 
-          element={user ? <Dashboard /> : <Navigate to="/login" />} 
+          element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 
         />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

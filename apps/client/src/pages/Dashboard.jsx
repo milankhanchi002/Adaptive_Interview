@@ -9,7 +9,6 @@ import {
   TrendingUp, 
   Clock, 
   Target, 
-  Calendar,
   BarChart3,
   Play,
   Eye
@@ -22,6 +21,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null)
   const [interviews, setInterviews] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetchDashboardData()
@@ -29,15 +29,33 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      setLoading(true)
+      setError(null)
+      
       const [statsResponse, interviewsResponse] = await Promise.all([
         interviewService.getInterviewStats(),
         interviewService.getUserInterviews(1, 5)
       ])
       
-      setStats(statsResponse.data)
-      setInterviews(interviewsResponse.data.interviews)
+      // Safely handle stats data
+      if (statsResponse?.data) {
+        setStats(statsResponse.data)
+      }
+      
+      // Safely handle interviews data
+      if (interviewsResponse?.data?.interviews) {
+        setInterviews(interviewsResponse.data.interviews)
+      } else {
+        setInterviews([])
+      }
+      
     } catch (error) {
+      console.error('Dashboard data fetch error:', error)
+      setError('Failed to load dashboard data')
       toast.error('Failed to load dashboard data')
+      // Set safe defaults
+      setStats(null)
+      setInterviews([])
     } finally {
       setLoading(false)
     }
@@ -45,14 +63,20 @@ const Dashboard = () => {
 
   const startNewInterview = async () => {
     try {
-      const response = await interviewService.startInterview(user.profile?.domain || 'Computer Science')
-      navigate(`/interview/${response.data.interviewId}`)
+      const response = await interviewService.startInterview(user?.profile?.domain || 'Computer Science')
+      if (response?.data?.interviewId) {
+        navigate(`/interview/${response.data.interviewId}`)
+      } else {
+        toast.error('Failed to start interview')
+      }
     } catch (error) {
+      console.error('Start interview error:', error)
       toast.error('Failed to start interview')
     }
   }
 
   const getScoreColor = (score) => {
+    if (!score && score !== 0) return 'text-gray-600'
     if (score >= 70) return 'text-success-600'
     if (score >= 40) return 'text-warning-600'
     return 'text-error-600'
@@ -69,8 +93,29 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Brain className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Oops!</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={fetchDashboardData}
+            className="btn btn-primary"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     )
   }
@@ -81,7 +126,7 @@ const Dashboard = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user.username}!
+            Welcome back, {user?.username || 'User'}!
           </h1>
           <p className="text-gray-600">
             Track your progress and improve your interview skills
@@ -105,7 +150,7 @@ const Dashboard = () => {
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <Brain className="h-8 w-8 text-primary-600" />
-                <span className="text-2xl font-bold text-gray-900">{stats.totalInterviews}</span>
+                <span className="text-2xl font-bold text-gray-900">{stats.totalInterviews || 0}</span>
               </div>
               <p className="text-gray-600">Total Interviews</p>
             </div>
@@ -114,7 +159,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between mb-4">
                 <TrendingUp className="h-8 w-8 text-success-600" />
                 <span className={`text-2xl font-bold ${getScoreColor(stats.averageScore)}`}>
-                  {stats.averageScore}
+                  {stats.averageScore || 0}
                 </span>
               </div>
               <p className="text-gray-600">Average Score</p>
@@ -123,7 +168,7 @@ const Dashboard = () => {
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <Target className="h-8 w-8 text-warning-600" />
-                <span className="text-2xl font-bold text-gray-900">{stats.highestScore}</span>
+                <span className="text-2xl font-bold text-gray-900">{stats.highestScore || 0}</span>
               </div>
               <p className="text-gray-600">Highest Score</p>
             </div>
@@ -132,7 +177,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between mb-4">
                 <Clock className="h-8 w-8 text-primary-600" />
                 <span className="text-2xl font-bold text-gray-900">
-                  {Math.round(stats.averageDuration / 60)}m
+                  {Math.round((stats.averageDuration || 0) / 60)}m
                 </span>
               </div>
               <p className="text-gray-600">Avg. Duration</p>
@@ -141,7 +186,7 @@ const Dashboard = () => {
         )}
 
         {/* Domain Stats */}
-        {stats?.domainStats && stats.domainStats.length > 0 && (
+        {stats?.domainStats && Array.isArray(stats.domainStats) && stats.domainStats.length > 0 && (
           <div className="card mb-8">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Performance by Domain</h3>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -149,9 +194,9 @@ const Dashboard = () => {
                 <div key={index} className="text-center">
                   <h4 className="font-medium text-gray-900 mb-2">{domain.domain}</h4>
                   <div className="text-2xl font-bold text-primary-600 mb-1">
-                    {domain.averageScore}
+                    {domain.averageScore || 0}
                   </div>
-                  <p className="text-sm text-gray-600">{domain.count} interviews</p>
+                  <p className="text-sm text-gray-600">{domain.count || 0} interviews</p>
                 </div>
               ))}
             </div>
@@ -170,7 +215,7 @@ const Dashboard = () => {
             </button>
           </div>
 
-          {interviews.length === 0 ? (
+          {!interviews || interviews.length === 0 ? (
             <div className="text-center py-12">
               <Brain className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No interviews yet</h3>
@@ -219,7 +264,7 @@ const Dashboard = () => {
                             <span>{Math.round(interview.totalDuration / 60)}m</span>
                           </div>
                         )}
-                        {interview.overallScore && (
+                        {interview.overallScore !== undefined && interview.overallScore !== null && (
                           <div className={`font-medium ${getScoreColor(interview.overallScore)}`}>
                             Score: {interview.overallScore}/100
                           </div>

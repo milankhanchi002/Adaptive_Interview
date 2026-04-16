@@ -12,7 +12,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
-  const { login, error, clearError } = useAuth()
+  const { login, error, clearError, isAuthenticated } = useAuth()
 
   const handleChange = (e) => {
     setFormData({
@@ -29,9 +29,11 @@ const Login = () => {
     try {
       const result = await login(formData.email, formData.password)
       if (result.success) {
-        toast.success('Login successful!')
+        toast.success('Login successful! Redirecting to dashboard...')
+        // Redirect will be handled by AuthContext initialization
       } else {
         toast.error(result.error)
+        clearError()
       }
     } catch (error) {
       toast.error('Login failed. Please try again.')
@@ -102,12 +104,12 @@ const Login = () => {
                   id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
                   value={formData.password}
                   onChange={handleChange}
-                  className="input pl-10 pr-10"
+                  className="input"
                   placeholder="Enter your password"
+                  required
+                  disabled={isLoading}
                 />
                 <button
                   type="button"

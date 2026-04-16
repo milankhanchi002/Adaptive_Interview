@@ -73,6 +73,7 @@ export const AuthProvider = ({ children }) => {
             }
           })
         } catch (error) {
+          console.error('Auth initialization error:', error)
           localStorage.removeItem('token')
           dispatch({ type: 'AUTH_FAILURE', payload: null })
         }
@@ -98,6 +99,7 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true }
     } catch (error) {
+      console.error('Login error:', error)
       const errorMessage = error.response?.data?.error || 'Login failed'
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage })
       return { success: false, error: errorMessage }
@@ -118,6 +120,7 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true }
     } catch (error) {
+      console.error('Registration error:', error)
       const errorMessage = error.response?.data?.error || 'Registration failed'
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage })
       return { success: false, error: errorMessage }
