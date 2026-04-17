@@ -43,6 +43,15 @@ const authReducer = (state, action) => {
         ...state,
         error: null
       }
+    case 'AUTH_RESET':
+      return {
+        ...state,
+        loading: false,
+        error: null,
+        user: null,
+        token: null,
+        isAuthenticated: false
+      }
     default:
       return state
   }
@@ -110,15 +119,21 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: 'AUTH_START' })
     try {
       const response = await authService.register(userData)
-      const { user, token } = response.data
+      const { message } = response.data
       
-      localStorage.setItem('token', token)
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: { user, token }
-      })
+      // Ensure no token exists after registration
+      localStorage.removeItem('token')
       
-      return { success: true }
+      // Don't authenticate user after signup - just return success
+      // Clear loading state but don't authenticate
+      dispatch({ type: 'AUTH_RESET' })
+      
+      // Add an extra dispatch to ensure state is fully cleared
+      setTimeout(() => {
+        dispatch({ type: 'AUTH_RESET' })
+      }, 100)
+      
+      return { success: true, message }
     } catch (error) {
       console.error('Registration error:', error)
       const errorMessage = error.response?.data?.error || 'Registration failed'
@@ -130,6 +145,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token')
     dispatch({ type: 'LOGOUT' })
+    // Note: Redirect will be handled by App.jsx useEffect
   }
 
   const clearError = () => {

@@ -7,17 +7,17 @@ const questionAnswerSchema = new mongoose.Schema({
   },
   answer: {
     type: String,
-    required: true
+    default: ''
   },
   score: {
     type: Number,
-    required: true,
+    default: 0,
     min: 0,
     max: 10
   },
   feedback: {
     type: String,
-    required: true
+    default: ''
   },
   strengths: [String],
   weaknesses: [String],
@@ -33,7 +33,7 @@ const questionAnswerSchema = new mongoose.Schema({
   },
   timeTaken: {
     type: Number, // in seconds
-    required: true
+    default: 0
   }
 }, { _id: false });
 
@@ -60,27 +60,50 @@ const interviewSchema = new mongoose.Schema({
     max: 100
   },
   skillBreakdown: {
-    problemSolving: {
-      type: Number,
-      min: 0,
-      max: 100
-    },
-    aiKnowledge: {
-      type: Number,
-      min: 0,
-      max: 100
-    },
     communication: {
-      type: Number,
-      min: 0,
-      max: 100
+      score: { type: Number, min: 0, max: 100 },
+      maxScore: { type: Number, min: 0, max: 100 },
+      minScore: { type: Number, min: 0, max: 100 },
+      consistency: { type: Number, min: 0, max: 100 }
+    },
+    technicalKnowledge: {
+      score: { type: Number, min: 0, max: 100 },
+      maxScore: { type: Number, min: 0, max: 100 },
+      minScore: { type: Number, min: 0, max: 100 },
+      consistency: { type: Number, min: 0, max: 100 }
+    },
+    problemSolving: {
+      score: { type: Number, min: 0, max: 100 },
+      maxScore: { type: Number, min: 0, max: 100 },
+      minScore: { type: Number, min: 0, max: 100 },
+      consistency: { type: Number, min: 0, max: 100 }
+    },
+    timeManagement: {
+      score: { type: Number, min: 0, max: 100 },
+      averageTimePerQuestion: { type: Number, min: 0 },
+      totalTime: { type: Number, min: 0 },
+      efficiency: { type: Number, min: 0, max: 100 }
     }
   },
   level: {
     type: String,
-    enum: ['Beginner', 'Intermediate', 'Advanced']
+    enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert']
   },
-  recommendations: [String],
+  recommendations: [{
+    type: {
+      type: String,
+      enum: ['strength', 'improvement'],
+      required: true
+    },
+    title: {
+      type: String,
+      required: true
+    },
+    description: {
+      type: String,
+      required: true
+    }
+  }],
   totalDuration: {
     type: Number // in seconds
   },

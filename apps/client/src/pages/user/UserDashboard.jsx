@@ -1,21 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import interviewService from '../services/interviewService'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { useAuth } from '../../context/AuthContext'
+import interviewService from '../../services/interviewService'
+import LoadingSpinner from '../../components/LoadingSpinner'
 import { 
   Brain, 
   Plus, 
   TrendingUp, 
   Clock, 
   Target, 
-  BarChart3,
   Play,
   Eye
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const Dashboard = () => {
+const UserDashboard = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [stats, setStats] = useState(null)
@@ -25,27 +24,36 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [user?.id]) // Re-fetch when user changes
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
       setError(null)
+      console.log('Fetching dashboard data...')
       
       const [statsResponse, interviewsResponse] = await Promise.all([
         interviewService.getInterviewStats(),
         interviewService.getUserInterviews(1, 5)
       ])
       
+      console.log('API responses:', { statsResponse, interviewsResponse })
+      
       // Safely handle stats data
       if (statsResponse?.data) {
+        console.log('Setting stats:', statsResponse.data)
         setStats(statsResponse.data)
+      } else {
+        console.log('No stats data available')
+        setStats(null)
       }
       
       // Safely handle interviews data
       if (interviewsResponse?.data?.interviews) {
+        console.log('Setting interviews:', interviewsResponse.data.interviews)
         setInterviews(interviewsResponse.data.interviews)
       } else {
+        console.log('No interviews data available')
         setInterviews([])
       }
       
@@ -61,17 +69,38 @@ const Dashboard = () => {
     }
   }
 
+  const handleRefresh = async () => {
+    console.log('Manual refresh triggered')
+    await fetchDashboardData()
+    toast.success('Dashboard refreshed!')
+  }
+
   const startNewInterview = async () => {
     try {
+      console.log('Starting new interview for domain:', user?.profile?.domain || 'Computer Science')
       const response = await interviewService.startInterview(user?.profile?.domain || 'Computer Science')
-      if (response?.data?.interviewId) {
-        navigate(`/user/interview`)
+      console.log('Start interview response:', response)
+      console.log('Response data:', response?.data)
+      console.log('Response data data:', response?.data?.data)
+      
+      if (response?.data?.data?.interviewId) {
+        console.log('Navigating to interview with ID:', response.data.data.interviewId)
+        navigate(`/user/interview/${response.data.data.interviewId}`)
       } else {
-        toast.error('Failed to start interview')
+        console.error('No interview ID in response:', response)
+        toast.error('Failed to start interview - No interview ID received')
       }
     } catch (error) {
       console.error('Start interview error:', error)
-      toast.error('Failed to start interview')
+      if (error.response?.status === 0) {
+        toast.error('Server is not running. Please start the backend server.')
+      } else if (error.response?.status >= 500) {
+        toast.error('Server error. Please try again later.')
+      } else if (error.response?.status === 400) {
+        toast.error('Invalid request. Please check your profile.')
+      } else {
+        toast.error('Failed to start interview. Please try again.')
+      }
     }
   }
 
@@ -91,6 +120,7 @@ const Dashboard = () => {
     return colors[level] || 'bg-gray-100 text-gray-800'
   }
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -102,6 +132,7 @@ const Dashboard = () => {
     )
   }
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -134,13 +165,21 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="mb-8">
+        <div className="mb-8 flex space-x-4">
           <button
             onClick={startNewInterview}
             className="btn btn-primary btn-lg flex items-center space-x-2"
           >
             <Plus className="h-5 w-5" />
             <span>Start New Interview</span>
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="btn btn-secondary flex items-center space-x-2"
+            disabled={loading}
+          >
+            <Clock className="h-5 w-5" />
+            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
 
@@ -185,30 +224,12 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Domain Stats */}
-        {stats?.domainStats && Array.isArray(stats.domainStats) && stats.domainStats.length > 0 && (
-          <div className="card mb-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Performance by Domain</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.domainStats.map((domain, index) => (
-                <div key={index} className="text-center">
-                  <h4 className="font-medium text-gray-900 mb-2">{domain.domain}</h4>
-                  <div className="text-2xl font-bold text-primary-600 mb-1">
-                    {domain.averageScore || 0}
-                  </div>
-                  <p className="text-sm text-gray-600">{domain.count || 0} interviews</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Recent Interviews */}
         <div className="card">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900">Recent Interviews</h3>
             <button
-              onClick={() => navigate('/interviews')}
+              onClick={() => navigate('/user/interviews')}
               className="text-primary-600 hover:text-primary-700 text-sm font-medium"
             >
               View All
@@ -242,14 +263,14 @@ const Dashboard = () => {
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           interview.status === 'Completed' ? 'bg-success-100 text-success-800' :
                           interview.status === 'In Progress' ? 'bg-warning-100 text-warning-800' :
-                          'bg-error-100 text-error-800'
+                          'bg-gray-100 text-gray-800'
                         }`}>
                           {interview.status}
                         </span>
                       </div>
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
                         <div className="flex items-center space-x-1">
-                          <Calendar className="h-4 w-4" />
+                          <Clock className="h-4 w-4" />
                           <span>{new Date(interview.createdAt).toLocaleDateString()}</span>
                         </div>
                         {interview.questionCount && (
@@ -274,7 +295,7 @@ const Dashboard = () => {
                     <div className="flex items-center space-x-2">
                       {interview.status === 'Completed' ? (
                         <button
-                          onClick={() => navigate(`/result/${interview._id}`)}
+                          onClick={() => navigate(`/user/result/${interview._id}`)}
                           className="btn btn-secondary flex items-center space-x-1"
                         >
                           <Eye className="h-4 w-4" />
@@ -282,7 +303,7 @@ const Dashboard = () => {
                         </button>
                       ) : interview.status === 'In Progress' ? (
                         <button
-                          onClick={() => navigate(`/interview/${interview._id}`)}
+                          onClick={() => navigate(`/user/interview`)}
                           className="btn btn-primary flex items-center space-x-1"
                         >
                           <Play className="h-4 w-4" />
@@ -301,4 +322,4 @@ const Dashboard = () => {
   )
 }
 
-export default Dashboard
+export default UserDashboard

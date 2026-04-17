@@ -11,6 +11,7 @@ const registerSchema = Joi.object({
     'any.only': 'Passwords do not match',
     'any.required': 'Confirm password is required'
   }),
+  role: Joi.string().valid('user', 'interviewer').default('user'),
   profile: Joi.object({
     firstName: Joi.string(),
     lastName: Joi.string(),
@@ -38,7 +39,7 @@ class AuthController {
         return res.status(400).json({ error: error.details[0].message });
       }
 
-      const { username, email, password, profile } = req.body;
+      const { username, email, password, role, profile } = req.body;
 
       // Check if user already exists
       const existingUser = await User.findOne({
@@ -56,6 +57,7 @@ class AuthController {
         username,
         email,
         password,
+        role: role || 'user',
         profile: {
           ...profile,
           domain: profile?.domain || 'Computer Science',
@@ -65,14 +67,15 @@ class AuthController {
 
       await user.save();
 
-      // Generate token
-      const token = generateToken(user._id);
-
       res.status(201).json({
         success: true,
-        message: 'User registered successfully',
-        user,
-        token
+        message: 'Account created successfully. Please login.',
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role
+        }
       });
     } catch (error) {
       next(error);

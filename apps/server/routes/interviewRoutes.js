@@ -10,6 +10,9 @@ router.use(authMiddleware);
 // Start a new interview
 router.post('/start', interviewController.startInterview);
 
+// Get next question in interview
+router.get('/:interviewId/next', interviewController.getNextQuestion);
+
 // Submit answer to current question
 router.post('/:interviewId/answer', interviewController.submitAnswer);
 

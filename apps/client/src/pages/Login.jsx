@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Brain, Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -12,7 +12,8 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
-  const { login, error, clearError, isAuthenticated } = useAuth()
+  const { login, error, clearError, user } = useAuth()
+  const navigate = useNavigate()
 
   const handleChange = (e) => {
     setFormData({
@@ -29,8 +30,8 @@ const Login = () => {
     try {
       const result = await login(formData.email, formData.password)
       if (result.success) {
-        toast.success('Login successful! Redirecting to dashboard...')
-        // Redirect will be handled by AuthContext initialization
+        toast.success('Login successful!')
+        // Role-based redirect will be handled by App.jsx
       } else {
         toast.error(result.error)
         clearError()

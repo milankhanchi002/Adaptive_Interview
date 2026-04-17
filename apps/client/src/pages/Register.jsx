@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Brain, Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -10,6 +10,7 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    role: 'user',
     profile: {
       firstName: '',
       lastName: '',
@@ -19,8 +20,14 @@ const Register = () => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [registrationSuccess, setRegistrationSuccess] = useState(false)
   
-  const { register, error, clearError, isAuthenticated } = useAuth()
+  const { register, error, clearError, loading, user, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    console.log('Register useEffect:', { registrationSuccess, loading, isAuthenticated, user })
+  }, [registrationSuccess, loading, navigate, user])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -55,11 +62,39 @@ const Register = () => {
     setIsLoading(true)
 
     try {
-      const { confirmPassword, ...userData } = formData
-      const result = await register(formData)
+      // Prepare submission data
+      const submissionData = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        role: formData.role
+      }
+
+      // Only include profile data for candidates
+      if (formData.role === 'user') {
+        submissionData.profile = {
+          firstName: formData.profile.firstName,
+          lastName: formData.profile.lastName,
+          domain: formData.profile.domain,
+          experience: formData.profile.experience
+        }
+      } else {
+        // For interviewers, include empty profile or minimal data
+        submissionData.profile = {
+          firstName: formData.profile.firstName,
+          lastName: formData.profile.lastName
+        }
+      }
+
+      const result = await register(submissionData)
       if (result.success) {
-        toast.success('Registration successful! Redirecting to dashboard...')
-        // Redirect will be handled by AuthContext initialization
+        toast.success(result.message || 'Account created successfully. Please login.')
+        console.log('Registration successful, forcing redirect to login...')
+        // Force redirect using window.location to avoid any React Router interference
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 1500)
       } else {
         toast.error(result.error)
         clearError()
@@ -71,11 +106,7 @@ const Register = () => {
     }
   }
 
-  if (isAuthenticated) {
-    // Redirect to dashboard if already authenticated
-    // This will be handled by AuthContext initialization
-  }
-
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -85,13 +116,10 @@ const Register = () => {
             <Brain className="h-12 w-12 text-primary-600" />
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Create your account
+            Join our AI Interview Platform
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Or{' '}
-            <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
-              sign in to your existing account
-            </Link>
+            Choose your role and get started with AI-powered interviews
           </p>
         </div>
 
@@ -160,6 +188,44 @@ const Register = () => {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                I want to join as
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="user"
+                    checked={formData.role === 'user'}
+                    onChange={handleChange}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                    disabled={isLoading}
+                  />
+                  <div className="ml-3">
+                    <span className="font-medium text-gray-900">Candidate</span>
+                    <p className="text-sm text-gray-600">Take AI interviews and improve my skills</p>
+                  </div>
+                </label>
+                <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="interviewer"
+                    checked={formData.role === 'interviewer'}
+                    onChange={handleChange}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                    disabled={isLoading}
+                  />
+                  <div className="ml-3">
+                    <span className="font-medium text-gray-900">Interviewer</span>
+                    <p className="text-sm text-gray-600">Review candidate performance and analytics</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email address
               </label>
@@ -182,42 +248,47 @@ const Register = () => {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
-                Domain
-              </label>
-              <select
-                id="domain"
-                name="profile.domain"
-                value={formData.profile.domain}
-                onChange={handleChange}
-                className="input"
-                disabled={isLoading}
-              >
-                <option value="Computer Science">Computer Science</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Finance">Finance</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
+            {/* Profile fields only for candidates */}
+            {formData.role === 'user' && (
+              <>
+                <div>
+                  <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
+                    Domain
+                  </label>
+                  <select
+                    id="domain"
+                    name="profile.domain"
+                    value={formData.profile.domain}
+                    onChange={handleChange}
+                    className="input"
+                    disabled={isLoading}
+                  >
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
 
-            <div>
-              <label htmlFor="experience" className="block text-sm font-medium text-gray-700 mb-1">
-                Experience Level
-              </label>
-              <select
-                id="experience"
-                name="profile.experience"
-                value={formData.profile.experience}
-                onChange={handleChange}
-                className="input"
-                disabled={isLoading}
-              >
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-              </select>
-            </div>
+                <div>
+                  <label htmlFor="experience" className="block text-sm font-medium text-gray-700 mb-1">
+                    Experience Level
+                  </label>
+                  <select
+                    id="experience"
+                    name="profile.experience"
+                    value={formData.profile.experience}
+                    onChange={handleChange}
+                    className="input"
+                    disabled={isLoading}
+                  >
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                  </select>
+                </div>
+              </>
+            )}
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
@@ -282,7 +353,9 @@ const Register = () => {
                 {isLoading && (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 )}
-                <span>Create Account</span>
+                <span>
+                  {formData.role === 'user' ? 'Join as Candidate' : 'Join as Interviewer'}
+                </span>
               </button>
             </div>
           </form>
